@@ -31,7 +31,7 @@ class GenerateAltTextJob implements ShouldQueue
         }
 
         // Create an image instance and resize it
-        $image = Image::make($asset->resolvedPath());
+        $image = Image::make($asset->contents());
 
         // Resize to max 1200px on longest side
         $width = $image->width();
