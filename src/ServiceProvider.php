@@ -15,10 +15,6 @@ class ServiceProvider extends AddonServiceProvider
         GenerateAltText::class
     ];
 
-    protected $scripts = [
-        __DIR__.'/../resources/js/cp.js'
-    ];
-
     public function bootAddon()
     {
         $this->publishes([
