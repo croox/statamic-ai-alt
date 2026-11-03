@@ -8,13 +8,13 @@ AI-powered alt text generation for Statamic assets using OpenAI's Vision API.
 
 - Automatically generates alt text for images using OpenAI's Vision API
 - Works with JPG, PNG, Webp and GIF files (SVG is not supported)
-- Available in both list and detail views (Statamic 5+)
+- Available in both list and detail views
 - Queued job processing to handle large batches
 
 ## Requirements
 
-- Statamic 5.0+
-- PHP 8.1+
+- Statamic 6.0+
+- PHP 8.2+
 - OpenAI API key
 - Laravel Queue worker (for background processing)
 

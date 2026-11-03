@@ -7,10 +7,13 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Statamic\Facades\Asset;
-use OpenAI\Laravel\Facades\OpenAI;
-use Intervention\Image\Facades\Image;
 use Illuminate\Support\Facades\Log;
+use Intervention\Image\Drivers\Gd\Driver as GdDriver;
+use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
+use Intervention\Image\Format;
+use Intervention\Image\ImageManager;
+use OpenAI\Laravel\Facades\OpenAI;
+use Statamic\Facades\Asset;
 use Throwable;
 
 class GenerateAltTextJob implements ShouldQueue
@@ -30,28 +33,18 @@ class GenerateAltTextJob implements ShouldQueue
             return;
         }
 
-        // Create an image instance and resize it
-        $image = Image::make($asset->resolvedPath());
+        // Same driver Statamic uses for its own image manipulation. The
+        // contents come from the asset's disk, so remote disks work as well.
+        $driver = config('statamic.assets.image_manipulation.driver', 'gd') === 'imagick'
+            ? ImagickDriver::class
+            : GdDriver::class;
 
-        // Resize to max 1200px on longest side
-        $width = $image->width();
-        $height = $image->height();
-
-        if ($width > $height) {
-            $image->resize(1200, null, function ($constraint) {
-                $constraint->aspectRatio();
-                $constraint->upsize();
-            });
-        } else {
-            $image->resize(null, 1200, function ($constraint) {
-                $constraint->aspectRatio();
-                $constraint->upsize();
-            });
-        }
-
-        // Convert to WebP and get contents
-        $processedImage = $image->encode('webp', 80);
-        $base64Image = base64_encode($processedImage);
+        // Shrink to max 1200px on the longest side (never upscale) and send as WebP
+        $dataUri = ImageManager::usingDriver($driver)
+            ->decodeBinary($asset->contents())
+            ->scaleDown(1200, 1200)
+            ->encodeUsingFormat(Format::WEBP, quality: 80)
+            ->toDataUri();
 
         $response = OpenAI::chat()->create([
             'model' => config('statamic-ai-alt.openai.model'),
@@ -61,21 +54,26 @@ class GenerateAltTextJob implements ShouldQueue
                     'content' => [
                         [
                             'type' => 'text',
-                            'text' => "Provide alt text in " . config('statamic-ai-alt.language', 'English') . "Do not say 'Image of' or 'Photo of' or anything like that but just describe the image. Be concise and stay under 500 characters in 1-2 sentences. Finish with a period."
+                            'text' => "Provide alt text in " . config('statamic-ai-alt.language', 'English') . ". Do not say 'Image of' or 'Photo of' or anything like that but just describe the image. Be concise and stay under 500 characters in 1-2 sentences. Finish with a period."
                         ],
                         [
                             'type' => 'image_url',
                             'image_url' => [
-                                'url' => "data:image/webp;base64,{$base64Image}",
+                                'url' => (string) $dataUri,
                             ]
                         ]
                     ]
                 ]
             ],
-            'max_tokens' => 100
+            'max_completion_tokens' => 200
         ]);
 
-        $altText = $response->choices[0]->message->content;
+        $altText = trim($response->choices[0]->message->content ?? '');
+
+        if ($altText === '') {
+            return;
+        }
+
         $asset->set('alt', $altText);
         $asset->save();
     }

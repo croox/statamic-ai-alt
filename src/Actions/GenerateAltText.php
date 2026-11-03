@@ -10,7 +10,7 @@ class GenerateAltText extends Action
 {
     public static function title()
     {
-        return 'Generate Alt Text';
+        return __('statamic-ai-alt::messages.title');
     }
 
     public function visibleTo($item)
@@ -25,12 +25,15 @@ class GenerateAltText extends Action
 
     public function run($items, $values)
     {
+        $count = 0;
+
         foreach ($items as $item) {
             if ($item instanceof Asset) {
                 GenerateAltTextJob::dispatch($item->id());
+                $count++;
             }
         }
 
-        return ['message' => 'Alt text generation started'];
+        return ['message' => trans_choice('statamic-ai-alt::messages.success', $count, ['count' => $count])];
     }
 }
