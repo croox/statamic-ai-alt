@@ -71,6 +71,8 @@ class GenerateAltTextJob implements ShouldQueue
         $altText = trim($response->choices[0]->message->content ?? '');
 
         if ($altText === '') {
+            Log::warning('AI Alt Text Generation returned no text', ['asset_id' => $this->assetId]);
+
             return;
         }
 
