@@ -4,13 +4,14 @@ namespace Croox\StatamicAiAlt\Actions;
 
 use Statamic\Actions\Action;
 use Croox\StatamicAiAlt\Jobs\GenerateAltTextJob;
+use Illuminate\Support\Str;
 use Statamic\Assets\Asset;
 
 class GenerateAltText extends Action
 {
     public static function title()
     {
-        return __('statamic-ai-alt::messages.title');
+        return __('Generate Alt Text', [], static::language());
     }
 
     public function visibleTo($item)
@@ -34,6 +35,20 @@ class GenerateAltText extends Action
             }
         }
 
-        return ['message' => trans_choice('statamic-ai-alt::messages.success', $count, ['count' => $count])];
+        return ['message' => trans_choice(
+            'Alt text generation queued for :count image|Alt text generation queued for :count images',
+            $count,
+            ['count' => $count],
+            static::language()
+        )];
+    }
+
+    /**
+     * Laravel looks a locale up as it is, so de_DE would miss de.json. The English
+     * text is the key, so a language without a translation still reads properly.
+     */
+    protected static function language()
+    {
+        return Str::before(app()->getLocale(), '_');
     }
 }

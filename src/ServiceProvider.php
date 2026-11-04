@@ -10,4 +10,9 @@ class ServiceProvider extends AddonServiceProvider
     protected $actions = [
         GenerateAltText::class
     ];
+
+    public function bootAddon()
+    {
+        $this->loadJsonTranslationsFrom(__DIR__.'/../resources/lang');
+    }
 }
