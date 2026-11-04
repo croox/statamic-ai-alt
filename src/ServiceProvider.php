@@ -11,6 +11,14 @@ class ServiceProvider extends AddonServiceProvider
         GenerateAltText::class
     ];
 
+    protected $routes = [
+        'cp' => __DIR__.'/../routes/cp.php',
+    ];
+
+    protected $scripts = [
+        __DIR__.'/../resources/js/cp.js',
+    ];
+
     public function bootAddon()
     {
         $this->loadJsonTranslationsFrom(__DIR__.'/../resources/lang');
