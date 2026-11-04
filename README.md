@@ -23,6 +23,7 @@ AI-powered alt text generation for Statamic assets using OpenAI, Claude or Gemin
 1. Install the package:
 ```bash
 composer require croox/statamic-ai-alt
+php artisan vendor:publish --tag=statamic-ai-alt --force
 ```
 
 1. Add the API key of your provider and the target language to your `.env` file:
@@ -49,6 +50,8 @@ AI_ALT_LANGUAGE="English"
 1. In the Assets section of the Control Panel, select one or more images
 2. Click the "Generate Alt Text" action
 3. The alt text will be generated in the background and saved to your assets
+
+In the asset editor, the wand on a textarea field with the handle `alt` fills the field right away. Nothing is saved until you save the asset.
 
 
 ## Future ideas / missing features
