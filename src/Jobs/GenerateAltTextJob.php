@@ -2,6 +2,7 @@
 
 namespace Croox\StatamicAiAlt\Jobs;
 
+use Croox\StatamicAiAlt\Agents\AltTextAgent;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -12,7 +13,7 @@ use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use Intervention\Image\Format;
 use Intervention\Image\ImageManager;
-use OpenAI\Laravel\Facades\OpenAI;
+use Laravel\Ai\Files\Image;
 use Statamic\Facades\Asset;
 use Throwable;
 
@@ -40,35 +41,19 @@ class GenerateAltTextJob implements ShouldQueue
             : GdDriver::class;
 
         // Shrink to max 1200px on the longest side (never upscale) and send as WebP
-        $dataUri = ImageManager::usingDriver($driver)
+        $encoded = ImageManager::usingDriver($driver)
             ->decodeBinary($asset->contents())
             ->scaleDown(1200, 1200)
-            ->encodeUsingFormat(Format::WEBP, quality: 80)
-            ->toDataUri();
+            ->encodeUsingFormat(Format::WEBP, quality: 80);
 
-        $response = OpenAI::chat()->create([
-            'model' => config('statamic-ai-alt.openai.model'),
-            'messages' => [
-                [
-                    'role' => 'user',
-                    'content' => [
-                        [
-                            'type' => 'text',
-                            'text' => "Provide alt text in " . config('statamic-ai-alt.language', 'English') . ". Do not say 'Image of' or 'Photo of' or anything like that but just describe the image. Be concise and stay under 500 characters in 1-2 sentences. Finish with a period."
-                        ],
-                        [
-                            'type' => 'image_url',
-                            'image_url' => [
-                                'url' => (string) $dataUri,
-                            ]
-                        ]
-                    ]
-                ]
-            ],
-            'max_completion_tokens' => 200
-        ]);
+        $response = (new AltTextAgent)->prompt(
+            'Describe this image.',
+            attachments: [Image::fromBase64(base64_encode((string) $encoded), 'image/webp')],
+            provider: config('statamic-ai-alt.provider') ?: null,
+            model: config('statamic-ai-alt.model') ?: null,
+        );
 
-        $altText = trim($response->choices[0]->message->content ?? '');
+        $altText = trim($response->text);
 
         if ($altText === '') {
             Log::warning('AI Alt Text Generation returned no text', ['asset_id' => $this->assetId]);
